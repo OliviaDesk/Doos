@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doos AI</title>
+    <style>
+        :root {
+            --primary: #00a8ff;
+            --secondary: #884dff;
+            --bg-dark: #0f0f1f;
+            --bg-darker: #080812;
+            --user-bubble: #3a7bd5;
+            --ai-bubble: #24243e;
+            --text-light: #f0f8ff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-darker);
+            color: var(--text-light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(0, 168, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(136, 77, 255, 0.05) 0%, transparent 40%);
+        }
+        
+        #chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        #chat-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 168, 255, 0.1);
+            background: rgba(15, 15, 31, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10;
+        }
+        
+        .logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+        }
+        
+        .logo-text::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transform-origin: right;
+            animation: underline 3s infinite alternate;
+        }
+        
+        @keyframes underline {
+            0% { transform: scaleX(0); transform-origin: right; }
+            50% { transform: scaleX(1); transform-origin: right; }
+            51% { transform-origin: left; }
+            100% { transform: scaleX(0); transform-origin: left; }
+        }
+        
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: conic-gradient(from 180deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: rotate 6s linear infinite;
+        }
+        
+        .logo-icon::before {
+            content: "";
+            width: 16px;
+            height: 16px;
+            background: var(--bg-darker);
+            border-radius: 50%;
+            z-index: 1;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #chatbox {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 90px;
+            background: rgba(8, 8, 18, 0.6);
+        }
+        
+        .message {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            max-width: 90%;
+        }
+        
+        .user-message {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+        
+        .ai-message {
+            margin-right: auto;
+            opacity: 0;
+            animation: fadeIn 0.4s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .avatar {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+        
+        .message-content {
+            max-width: calc(100% - 50px);
+            padding: 14px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 16px;
+            position: relative;
+        }
+        
+        .user-message .message-content {
+            background: rgba(58, 123, 213, 0.15);
+            border: 1px solid rgba(58, 123, 213, 0.3);
+            color: var(--text-light);
+            border-top-right-radius: 4px;
+        }
+        
+        .ai-message .message-content {
+            background: rgba(36, 36, 62, 0.6);
+            border: 1px solid rgba(136, 77, 255, 0.2);
+            color: var(--text-light);
+            border-top-left-radius: 4px;
+        }
+        
+        .typing {
+            display: inline-block;
+        }
+        
+        .typing-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: typingAnimation 1.6s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+        
+        #input-area {
+            padding: 15px 20px;
+            background: rgba(15, 15, 31, 0.7);
+            border-top: 1px solid rgba(0, 168, 255, 0.1);
+            backdrop-filter: blur(12px);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        #input-container {
+            display: flex;
+            border-radius: 28px;
+            border: 1px solid rgba(0, 168, 255, 0.2);
+            background: rgba(20, 20, 40, 0.5);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        #input-container:focus-within {
+            border-color: var(--secondary);
+        }
+        
+        #userInput {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            background: transparent;
+            color: var(--text-light);
+        }
+        
+        #userInput::placeholder {
+            color: rgba(240, 248, 255, 0.4);
+        }
+        
+        #send-button {
+            background: transparent;
+            color: var(--primary);
+            border: none;
+            padding: 0 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        
+        #send-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* Welcome popup styles */
+        #welcome-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 15, 31, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 168, 255, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 80%;
+            width: 400px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        #welcome-popup h2 {
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        #welcome-popup p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: rgba(240, 248, 255, 0.9);
+        }
+
+        #welcome-popup .logo-small {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        #welcome-popup .logo-small .logo-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        #welcome-popup .logo-small .logo-text {
+            font-size: 1.2rem;
+        }
+
+        /* Loading bar animation */
+        @keyframes loadingBar {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        .loading-bar {
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 0%;
+            border-radius: 3px;
+            animation: loadingBar 3s linear forwards;
+        }
+        
+        @media (max-width: 480px) {
+            .logo-text {
+                font-size: 1.8rem;
+            }
+            
+            .message {
+                max-width: 88%;
+                gap: 12px;
+            }
+            
+            .message-content {
+                font-size: 15px;
+                padding: 12px 16px;
+            }
+            
+            #input-area {
+                padding: 12px 15px;
+            }
+            
+            #userInput {
+                padding: 12px 16px;
+            }
+
+            #welcome-popup {
+                width: 90%;
+                padding: 20px;
+            }
+
+            #welcome-popup h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Welcome Popup -->
+    <div id="welcome-popup">
+        <div class="logo-small">
+            <div class="logo-icon"></div>
+            <div class="logo-text">DOOS</div>
+        </div>
+        <h2>Welcome to Doos AI</h2>
+        <p>I'm your AI assistant ready to help with any questions you have. Feel free to ask me anything!</p>
+        <div class="loading-bar"></div>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <div class="logo-text">D O O S</div>
+            </div>
+        </div>
+        <div id="chatbox"></div>
+        <div id="input-area">
+            <div id="input-container">
+                <input type="text" id="userInput" placeholder="Message Doos AI..." autofocus>
+                <button id="send-button" onclick="sendMessage()">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M22 2L11 13"></path>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add message to chat
+        function addMessage(role, content, isThinking = false) {
+            const chatbox = document.getElementById("chatbox");
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `message ${role}-message`;
+            
+            const avatarDiv = document.createElement("div");
+            avatarDiv.className = `avatar`;
+            
+            const contentDiv = document.createElement("div");
+            contentDiv.className = "message-content";
+            
+            if (isThinking) {
+                const typingDiv = document.createElement("div");
+                typingDiv.className = "typing";
+                typingDiv.innerHTML = `
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+                contentDiv.appendChild(typingDiv);
+            } else {
+                contentDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
+            chatbox.appendChild(messageDiv);
+            
+            chatbox.scrollTop = chatbox.scrollHeight;
+            
+            return { messageDiv, contentDiv };
+        }
+
+        // Type out message character by character
+        async function typeMessage(element, text, speed = 20) {
+            return new Promise(resolve => {
+                let i = 0;
+                element.textContent = '';
+                const typingInterval = setInterval(() => {
+                    if (i < text.length) {
+                        element.textContent += text.charAt(i);
+                        i++;
+                        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                        clearInterval(typingInterval);
+                        resolve();
+                    }
+                }, speed);
+            });
+        }
+
+        // Send message to Netlify function
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput").value.trim();
+            if (!userInput) return;
+
+            // Add user message and clear input
+            addMessage("user", userInput);
+            document.getElementById("userInput").value = "";
+
+            // Show thinking indicator
+            const { messageDiv, contentDiv } = addMessage("ai", "", true);
+
+            try {
+                // Call Netlify Function
+                const response = await fetch("/.netlify/functions/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        inputs: `[INST] You are Doos AI, a helpful assistant created by Hassan Remilekun. Respond naturally:
+${userInput}
+[/INST]`,
+                        parameters: {
+                            max_new_tokens: 350,
+                            temperature: 0.7,
+                            repetition_penalty: 1.2
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || "Network error");
+                }
+
+                const data = await response.json();
+                let aiResponse = data[0]?.generated_text || "I couldn't generate a response right now.";
+                
+                // Clean response
+                aiResponse = aiResponse
+                    .replace(/\[INST\].*\[\/INST\]/gs, '')
+                    .replace(/Mistral/gi, 'Doos AI')
+                    .trim();
+
+                // Remove thinking message and type out response
+                messageDiv.remove();
+                const { contentDiv: newContentDiv } = addMessage("ai", "");
+                await typeMessage(newContentDiv, aiResponse);
+
+            } catch (error) {
+                console.error("Error:", error);
+                messageDiv.remove();
+                const { contentDiv: newContentDiv } = addMessage("ai", "");
+                await typeMessage(newContentDiv, "Sorry, I'm having trouble connecting. Please try again later.");
+            }
+        }
+
+        // Send message on Enter key
+        document.getElementById("userInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        // Welcome popup animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const welcomePopup = document.getElementById('welcome-popup');
+            
+            setTimeout(() => {
+                welcomePopup.style.opacity = '0';
+                welcomePopup.style.transform = 'translate(-50%, -50%) scale(0.95)';
+                welcomePopup.style.transition = 'all 0.5s ease-out';
+                
+                setTimeout(() => {
+                    welcomePopup.remove();
+                    // Add welcome message to chat
+                    setTimeout(() => {
+                        const { contentDiv } = addMessage("ai", "");
+                        typeMessage(contentDiv, "Hello! I'm Doos AI. How can I help you today?");
+                    }, 500);
+                }, 500);
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
